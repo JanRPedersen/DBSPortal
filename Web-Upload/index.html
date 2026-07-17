@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DBS Portal</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Spring til indhold</a>
+
+  <section class="auth-screen" id="auth-screen" aria-live="polite">
+    <div class="auth-card">
+      <h1>DBS Portal</h1>
+      <p>Log ind med din Microsoft-konto for at få adgang til portalen.</p>
+      <button type="button" class="auth-button" id="login-button">Log ind med Microsoft</button>
+      <p class="auth-status" id="auth-status">Log ind for at fortsætte.</p>
+    </div>
+  </section>
+
+  <div class="portal-shell is-hidden" id="portal-shell">
+    <nav class="sidebar" aria-label="Hovedmenu">
+      <div class="sidebar-header">
+        <p class="signed-in-label">Logget ind som</p>
+        <p class="signed-in-user" id="signed-in-user">-</p>
+        <button type="button" class="logout-button" id="logout-button">Log ud</button>
+      </div>
+      <ul class="menu">
+        <li class="dropdown">
+          <button type="button" class="dropbtn" aria-haspopup="true" aria-expanded="false">
+            Brugeradministration
+            <span class="visually-hidden">menu</span>
+          </button>
+          <ul class="dropdown-content">
+            <li>
+              <button type="button" class="menu-action open-form-portal" data-form-type="hire" data-resource-name="Ansættelse i portal">
+                Ansættelse i portal
+                <span class="visually-hidden">(indlæser formular i portalen)</span>
+              </button>
+            </li>
+            <li>
+              <button type="button" class="menu-action open-form-portal" data-form-type="termination" data-resource-name="Afskedigelse i portal">
+                Afskedigelse i portal
+                <span class="visually-hidden">(indlæser formular i portalen)</span>
+              </button>
+            </li>
+          </ul>
+        </li>
+        <li class="dropdown">
+          <button type="button" class="dropbtn" aria-haspopup="true" aria-expanded="false">
+            SharePoint
+            <span class="visually-hidden">menu</span>
+          </button>
+          <ul class="dropdown-content">
+            <li>
+              <button type="button" class="menu-action open-sharepoint-portal" data-resource-name="SharePoint Fælles">
+                Vis Fælles i portal
+                <span class="visually-hidden">(indlæser indhold i portalen)</span>
+              </button>
+            </li>
+          </ul>
+        </li>
+        <li class="dropdown">
+          <button type="button" class="dropbtn" aria-haspopup="true" aria-expanded="false">
+            OneDrive
+            <span class="visually-hidden">menu</span>
+          </button>
+          <ul class="dropdown-content">
+            <li>
+              <button type="button" class="menu-action open-onedrive-portal" data-resource-name="OneDrive i portal">
+                OneDrive i portal
+                <span class="visually-hidden">(indlæser din OneDrive i portalen)</span>
+              </button>
+            </li>
+          </ul>
+        </li>
+        <li class="dropdown">
+          <button type="button" class="dropbtn" aria-haspopup="true" aria-expanded="false">
+            Teams
+            <span class="visually-hidden">menu</span>
+          </button>
+          <ul class="dropdown-content">
+            <li>
+              <button type="button" class="menu-action open-teams-portal" data-resource-name="Teams i portal">
+                Teams i portal
+                <span class="visually-hidden">(indlæser Teams mirror i portalen)</span>
+              </button>
+            </li>
+          </ul>
+        </li>
+        <li class="dropdown">
+          <button type="button" class="dropbtn" aria-haspopup="true" aria-expanded="false">
+            Mail
+            <span class="visually-hidden">menu</span>
+          </button>
+          <ul class="dropdown-content">
+            <li>
+              <button type="button" class="menu-action open-mail-portal" data-resource-name="Mail i portal">
+                Mail i portal
+                <span class="visually-hidden">(indlæser mailformular i portalen)</span>
+              </button>
+            </li>
+          </ul>
+        </li>
+        <li class="dropdown">
+          <button type="button" class="dropbtn" aria-haspopup="true" aria-expanded="false">
+            Word
+            <span class="visually-hidden">menu</span>
+          </button>
+          <ul class="dropdown-content">
+            <li>
+              <button type="button" class="menu-action open-word-portal" data-resource-name="Word i portal">
+                Word i portal
+                <span class="visually-hidden">(indlæser teksteditor i portalen)</span>
+              </button>
+            </li>
+          </ul>
+        </li>
+        <li class="dropdown">
+          <button type="button" class="dropbtn" aria-haspopup="true" aria-expanded="false">
+            Excel
+            <span class="visually-hidden">menu</span>
+          </button>
+          <ul class="dropdown-content">
+            <li>
+              <button type="button" class="menu-action open-excel-portal" data-resource-name="Excel i portal">
+                Excel i portal
+                <span class="visually-hidden">(indlæser regneark i portalen)</span>
+              </button>
+            </li>
+          </ul>
+        </li>
+      </ul>
+      <div class="sidebar-footer">
+        <a href="https://www.blind.dk" target="_blank" rel="noopener noreferrer">
+          <img src="logo.png" alt="Dansk Blindesamfunds logo - gå til blind.dk" class="sidebar-logo">
+        </a>
+      </div>
+    </nav>
+
+    <main class="content" id="main-content" tabindex="-1">
+      <h1>Velkommen til DBS Portal</h1>
+      <p>Vælg fra menuerne til venstre for at tilgå Brugeradministration, SharePoint, Teams, Mail, Word eller Excel.</p>
+      <section class="resource-info" aria-live="polite">
+        <p class="resource-status is-hidden" id="resource-status"></p>
+      </section>
+
+      <section class="sharepoint-view is-hidden" id="sharepoint-view" aria-live="polite" aria-label="SharePoint indhold">
+        <div class="sharepoint-view-header">
+          <h2 id="sharepoint-title">SharePoint i portal</h2>
+          <button type="button" class="refresh-button" id="sharepoint-refresh">Opdater</button>
+        </div>
+        <p class="sharepoint-help">Indholdet hentes via Microsoft Graph med dine brugerrettigheder.</p>
+        <p class="sharepoint-help" id="mirror-source-label">Kilde: SharePoint</p>
+        <div class="sharepoint-nav">
+          <button type="button" class="nav-button" id="sharepoint-back">Tilbage</button>
+          <p class="sharepoint-path" id="sharepoint-path">Placering: Rod</p>
+        </div>
+        <p class="sharepoint-status" id="sharepoint-status">Klar til at indlæse.</p>
+        <ul class="sharepoint-list" id="sharepoint-list"></ul>
+      </section>
+
+      <section class="teams-view is-hidden" id="teams-view" aria-live="polite" aria-label="Teams i portal">
+        <div class="teams-view-header">
+          <h2>Teams i portal</h2>
+          <button type="button" class="refresh-button" id="teams-refresh">Opdater</button>
+        </div>
+        <p class="teams-help">Mirror viser de Teams du er medlem af og deres kanaler via Microsoft Graph.</p>
+        <p class="teams-status" id="teams-status">Klar til at indlæse Teams.</p>
+        <div class="teams-grid">
+          <section class="teams-panel" aria-label="Teams liste">
+            <h3>Dine Teams</h3>
+            <ul class="teams-list" id="teams-list"></ul>
+          </section>
+          <section class="teams-panel" aria-label="Kanaler i valgt Team">
+            <h3 id="teams-channels-title">Kanaler</h3>
+            <ul class="teams-channel-list" id="teams-channel-list"></ul>
+          </section>
+        </div>
+      </section>
+
+      <section class="forms-view is-hidden" id="forms-view" aria-live="polite" aria-label="Forms i portal">
+        <div class="forms-view-header">
+          <h2 id="forms-title">Forms i portal</h2>
+          <button type="button" class="refresh-button" id="forms-reset">Nulstil</button>
+        </div>
+        <p class="forms-description" id="forms-description">Vælg en formular i menuen for at starte.</p>
+        <p class="forms-status" id="forms-status">Ingen formular er indlæst endnu.</p>
+        <form class="portal-form" id="portal-form" novalidate></form>
+      </section>
+
+      <section class="mail-view is-hidden" id="mail-view" aria-live="polite" aria-label="Mail i portal">
+        <div class="mail-view-header">
+          <h2>Mail i portal</h2>
+          <div class="mail-header-actions">
+            <button type="button" class="refresh-button" id="mail-refresh-inbox">Opdater mapper og mails</button>
+            <button type="button" class="refresh-button" id="mail-reset">Nulstil</button>
+          </div>
+        </div>
+        <p class="mail-help">Skriv modtagere adskilt med komma eller semikolon. Dobbeltklik en mail for at flytte fokus til læsefeltet. Genvej: Alt+R hopper til læsefeltet.</p>
+        <p class="mail-status" id="mail-status">Ingen mail er klar endnu.</p>
+        <section class="mail-inbox" aria-label="Indkomne mails">
+          <div class="mail-inbox-header">
+            <h3>Indkomne mails</h3>
+            <p class="mail-inbox-status" id="mail-inbox-status">Indbakken er ikke hentet endnu.</p>
+          </div>
+          <div class="mail-inbox-grid">
+            <ul class="mail-folder-list" id="mail-folder-list" aria-label="Mail mapper"></ul>
+            <ul class="mail-inbox-list" id="mail-inbox-list"></ul>
+            <article class="mail-inbox-detail" id="mail-inbox-detail" aria-live="polite" role="region" aria-label="Læsefelt for valgt mail" aria-keyshortcuts="Alt+R" tabindex="-1">
+              <p class="visually-hidden" id="mail-reader-live" aria-live="assertive" aria-atomic="true"></p>
+              <h4>Vælg en mail</h4>
+              <p>Vælg en mail fra listen for at se detaljer.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="mail-compose" aria-label="Skriv mail">
+          <h3 class="mail-compose-title" id="mail-compose-title">Skriv mail</h3>
+          <form class="portal-form" id="mail-form" novalidate>
+            <div class="portal-form-field">
+              <label for="mail-to">Til *</label>
+              <input id="mail-to" name="to" type="text" required autocomplete="email">
+            </div>
+            <div class="portal-form-field">
+              <label for="mail-cc">Cc</label>
+              <input id="mail-cc" name="cc" type="text" autocomplete="email">
+            </div>
+            <div class="portal-form-field">
+              <label for="mail-bcc">Bcc</label>
+              <input id="mail-bcc" name="bcc" type="text" autocomplete="email">
+            </div>
+            <div class="portal-form-field">
+              <label for="mail-subject">Emne *</label>
+              <input id="mail-subject" name="subject" type="text" required>
+            </div>
+            <div class="portal-form-field">
+              <label for="mail-content-type">Mailformat</label>
+              <select id="mail-content-type" name="contentType">
+                <option value="Text">Ren tekst</option>
+                <option value="HTML">HTML</option>
+              </select>
+            </div>
+            <div class="portal-form-field">
+              <label for="mail-body">Besked *</label>
+              <textarea id="mail-body" name="body" required></textarea>
+            </div>
+            <div class="portal-form-field is-hidden" id="mail-html-preview-wrapper">
+              <label for="mail-html-preview">HTML-forhåndsvisning</label>
+              <div class="mail-html-preview" id="mail-html-preview" aria-live="polite"></div>
+            </div>
+            <div class="portal-form-field">
+              <label for="mail-attachments">Vedhæftning</label>
+              <input id="mail-attachments" name="attachments" type="file" multiple>
+            </div>
+            <div class="portal-form-actions">
+              <button type="button" class="secondary-button" id="mail-preview-html">Vis HTML</button>
+              <button type="submit" class="primary-button">Send mail</button>
+              <button type="reset" class="secondary-button">Ryd felter</button>
+            </div>
+          </form>
+        </section>
+      </section>
+
+      <section class="word-view is-hidden" id="word-view" aria-live="polite" aria-label="Word i portal">
+        <div class="word-view-header">
+          <h2>Word i portal</h2>
+          <div class="word-header-actions">
+            <button type="button" class="refresh-button" id="word-copy">Kopiér</button>
+            <button type="button" class="refresh-button" id="word-open">Åbn</button>
+            <button type="button" class="refresh-button" id="word-save-onedrive">Gem til OneDrive</button>
+            <button type="button" class="refresh-button" id="word-save-sharepoint">Gem til SharePoint</button>
+            <button type="button" class="refresh-button" id="word-clear">Ryd</button>
+            <input type="file" id="word-open-file" class="is-hidden" accept=".txt,.html,.htm,text/plain,text/html">
+          </div>
+        </div>
+        <p class="word-help">Skriv eller indsæt tekst, og brug værktøjerne for formatering.</p>
+        <p class="word-status" id="word-status">Editor klar.</p>
+        <div class="mail-rich-toolbar" role="toolbar" aria-label="Word værktøjer">
+          <label class="visually-hidden" for="word-block-style">Afsnitstype</label>
+          <select id="word-block-style" class="word-select" aria-label="Afsnitstype">
+            <option value="P">Brødtekst</option>
+            <option value="H1">Overskrift 1</option>
+            <option value="H2">Overskrift 2</option>
+            <option value="H3">Overskrift 3</option>
+            <option value="BLOCKQUOTE">Citat</option>
+          </select>
+
+          <label class="visually-hidden" for="word-font-family">Skrifttype</label>
+          <select id="word-font-family" class="word-select" aria-label="Skrifttype">
+            <option value="Arial">Arial</option>
+            <option value="Calibri" selected>Calibri</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Tahoma">Tahoma</option>
+            <option value="Times New Roman">Times New Roman</option>
+            <option value="Verdana">Verdana</option>
+          </select>
+
+          <label class="visually-hidden" for="word-font-size">Skriftstørrelse</label>
+          <select id="word-font-size" class="word-select" aria-label="Skriftstørrelse">
+            <option value="2">10 pt</option>
+            <option value="3" selected>12 pt</option>
+            <option value="4">14 pt</option>
+            <option value="5">18 pt</option>
+            <option value="6">24 pt</option>
+          </select>
+
+          <label class="visually-hidden" for="word-line-height">Linjeafstand</label>
+          <select id="word-line-height" class="word-select" aria-label="Linjeafstand">
+            <option value="1">1.0</option>
+            <option value="1.15">1.15</option>
+            <option value="1.5" selected>1.5</option>
+            <option value="2">2.0</option>
+          </select>
+
+          <label class="visually-hidden" for="word-text-color">Tekstfarve</label>
+          <input id="word-text-color" class="word-color" type="color" value="#1f1f1f" aria-label="Tekstfarve">
+
+          <label class="visually-hidden" for="word-highlight-color">Markeringsfarve</label>
+          <input id="word-highlight-color" class="word-color" type="color" value="#fff59d" aria-label="Markeringsfarve">
+
+          <button type="button" class="secondary-button word-tool" data-word-cmd="bold">Fed</button>
+          <button type="button" class="secondary-button word-tool" data-word-cmd="italic">Kursiv</button>
+          <button type="button" class="secondary-button word-tool" data-word-cmd="underline">Understreg</button>
+          <button type="button" class="secondary-button word-tool" data-word-cmd="strikeThrough">Gennemstreget</button>
+          <button type="button" class="secondary-button word-tool" data-word-cmd="insertUnorderedList">Punktliste</button>
+          <button type="button" class="secondary-button word-tool" data-word-cmd="insertOrderedList">Nummereret liste</button>
+          <button type="button" class="secondary-button word-tool" data-word-cmd="justifyLeft">Venstre</button>
+          <button type="button" class="secondary-button word-tool" data-word-cmd="justifyCenter">Centrer</button>
+          <button type="button" class="secondary-button word-tool" data-word-cmd="justifyRight">Højre</button>
+          <button type="button" class="secondary-button word-tool" data-word-cmd="createLink">Link</button>
+          <button type="button" class="secondary-button word-tool" data-word-cmd="unlink">Fjern link</button>
+          <button type="button" class="secondary-button word-tool" data-word-cmd="undo">Fortryd</button>
+          <button type="button" class="secondary-button word-tool" data-word-cmd="redo">Gendan</button>
+          <button type="button" class="secondary-button word-tool" data-word-cmd="removeFormat">Fjern formatering</button>
+        </div>
+        <div
+          id="word-editor"
+          class="mail-rich-editor"
+          contenteditable="true"
+          role="textbox"
+          aria-multiline="true"
+          aria-label="Word editor"
+        ></div>
+      </section>
+
+      <section class="excel-view is-hidden" id="excel-view" aria-live="polite" aria-label="Excel i portal">
+        <div class="excel-view-header">
+          <h2>Excel i portal</h2>
+          <div class="excel-header-actions">
+            <button type="button" class="refresh-button" id="excel-add-row">+ Række</button>
+            <button type="button" class="refresh-button" id="excel-add-col">+ Kolonne</button>
+            <button type="button" class="refresh-button" id="excel-open">Åbn Excel/CSV</button>
+            <button type="button" class="refresh-button" id="excel-save-onedrive">Gem til OneDrive</button>
+            <button type="button" class="refresh-button" id="excel-save-sharepoint">Gem til SharePoint</button>
+            <button type="button" class="refresh-button" id="excel-clear">Ryd ark</button>
+            <input type="file" id="excel-open-file" class="is-hidden" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv">
+          </div>
+        </div>
+        <p class="excel-help">Brug formellinjen med fx =SUM(A1:A5), =AVERAGE(B1:B3) eller simple regneudtryk.</p>
+        <p class="excel-status" id="excel-status">Regneark klar.</p>
+        <div class="excel-formula-row">
+          <label for="excel-formula" class="excel-formula-label">Formel</label>
+          <p class="excel-active-cell" id="excel-active-cell">Aktiv celle: A1</p>
+          <input type="text" id="excel-formula" class="excel-formula-input" aria-label="Formellinje">
+        </div>
+        <div class="excel-grid-wrapper">
+          <table class="excel-grid" id="excel-grid" aria-label="Excel gitter"></table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="vendor/msal-browser.min.js"></script>
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

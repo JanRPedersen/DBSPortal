@@ -1,0 +1,28 @@
+# Visual Studio temporary files
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build output
+bin/
+obj/
+
+# ClickOnce publish artifacts
+*.application
+app.publish/
+
+# Logs and diagnostics
+*.log
+
+# Node dependencies and cache
+Website/node_modules/
+Website/npm-debug.log*
+Website/yarn-debug.log*
+Website/yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
