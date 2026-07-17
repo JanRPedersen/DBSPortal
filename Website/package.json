@@ -4,6 +4,7 @@
   "description": "DBS portal static website",
   "main": "script.js",
   "scripts": {
+    "start": "http-server . -p 8080 -c-1",
     "serve": "http-server . -p 5500 -c-1",
     "serve:spa": "http-server . -p 5500 -c-1 -P http://localhost:5500?"
   },
