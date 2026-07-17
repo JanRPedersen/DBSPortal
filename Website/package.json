@@ -12,10 +12,8 @@
   "author": "",
   "license": "ISC",
   "type": "commonjs",
-  "devDependencies": {
-    "http-server": "^14.1.1"
-  },
   "dependencies": {
+    "http-server": "^14.1.1",
     "@azure/msal-browser": "^5.17.0",
     "xlsx": "^0.18.5"
   }
