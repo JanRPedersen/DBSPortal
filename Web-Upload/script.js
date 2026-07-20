@@ -94,6 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const sharepointLibraryName = "Delte dokumenter";
   const powerAutomateFlowUrl = "REPLACE_WITH_POWER_AUTOMATE_HTTP_TRIGGER_URL";
   const graphScopes = ["User.Read", "Sites.Read.All", "Files.Read.All", "Mail.Send", "Mail.Read"];
+  const mailReadWriteScopes = ["User.Read", "Mail.ReadWrite"];
   const graphWriteScopes = ["User.Read", "Sites.ReadWrite.All", "Files.ReadWrite.All"];
   const teamsReadScopes = ["User.Read", "Team.ReadBasic.All", "Channel.ReadBasic.All"];
   let sharepointSiteId = null;
@@ -111,6 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let selectedMailFolderName = "Alle mails";
   let selectedInboxMessageId = "";
   let focusReadPaneAfterLoad = false;
+  let markMessageAsReadAfterLoadId = "";
 
   const hiddenMailFolderNames = new Set([
     "alle mails",
@@ -540,7 +542,47 @@ document.addEventListener("DOMContentLoaded", () => {
     message._detailLoaded = true;
   }
 
-  async function openMessageInDetail(message, interactiveAllowed, moveFocusToReadPane) {
+  async function markMessageAsRead(message, interactiveAllowed) {
+    if (!message || !message.id || message.isRead) {
+      return;
+    }
+
+    const patchUrl = `https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(message.id)}`;
+    const patchBody = JSON.stringify({ isRead: true });
+
+    async function patchReadState(accessToken) {
+      const response = await fetch(patchUrl, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: patchBody,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Graph fejl (${response.status}): ${errorText || "ukendt fejl"}`);
+      }
+    }
+
+    let accessToken = await acquireGraphToken(interactiveAllowed, false, mailReadWriteScopes);
+
+    try {
+      await patchReadState(accessToken);
+    } catch (error) {
+      if (!interactiveAllowed || !isAccessDeniedMessage(error?.message)) {
+        throw error;
+      }
+
+      accessToken = await acquireGraphToken(true, true, mailReadWriteScopes);
+      await patchReadState(accessToken);
+    }
+
+    message.isRead = true;
+  }
+
+  async function openMessageInDetail(message, interactiveAllowed, moveFocusToReadPane, markAsRead = false) {
     if (!message) {
       return;
     }
@@ -555,6 +597,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       await ensureMessageDetailContent(message, interactiveAllowed);
+      if (markAsRead) {
+        try {
+          await markMessageAsRead(message, true);
+        } catch (error) {
+          const messageText = error?.message || "Ukendt fejl";
+          setMailStatus(`Kunne ikke markere mail som læst: ${messageText}`);
+        }
+      }
       renderMailDetail(message);
       if (moveFocusToReadPane) {
         focusMailReadPane(true);
@@ -1535,6 +1585,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "mail-inbox-button";
+      if (!message.isRead) {
+        button.classList.add("is-unread");
+      }
       if (message.id === selectedInboxMessageId) {
         button.classList.add("is-active");
       }
@@ -1543,12 +1596,21 @@ document.addEventListener("DOMContentLoaded", () => {
       subject.className = "mail-inbox-subject";
       subject.textContent = message.subject || "(intet emne)";
 
+      const stateBadge = document.createElement("span");
+      stateBadge.className = `mail-read-badge ${message.isRead ? "is-read" : "is-unread"}`;
+      stateBadge.textContent = message.isRead ? "Læst" : "Ulæst";
+
+      const heading = document.createElement("div");
+      heading.className = "mail-inbox-heading";
+      heading.appendChild(subject);
+      heading.appendChild(stateBadge);
+
       const senderName = message.from?.emailAddress?.name || "Ukendt";
       const meta = document.createElement("p");
       meta.className = "mail-inbox-meta";
       meta.textContent = `${senderName} | ${formatDate(message.receivedDateTime)}`;
 
-      button.appendChild(subject);
+      button.appendChild(heading);
       button.appendChild(meta);
       button.addEventListener("click", () => {
         selectedInboxMessageId = message.id || "";
@@ -1558,6 +1620,8 @@ document.addEventListener("DOMContentLoaded", () => {
       button.addEventListener("dblclick", () => {
         selectedInboxMessageId = message.id || "";
         focusReadPaneAfterLoad = true;
+        markMessageAsReadAfterLoadId = message.id || "";
+        message.isRead = true;
         renderInboxMessages(inboxMessages);
       });
 
@@ -1568,8 +1632,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const activeMessage = messages.find((message) => message.id === selectedInboxMessageId) || messages[0];
     selectedInboxMessageId = activeMessage.id || "";
     const moveFocusToReadPane = focusReadPaneAfterLoad;
+    const shouldMarkAsRead = activeMessage.id === markMessageAsReadAfterLoadId;
     focusReadPaneAfterLoad = false;
-    openMessageInDetail(activeMessage, false, moveFocusToReadPane);
+    markMessageAsReadAfterLoadId = "";
+    openMessageInDetail(activeMessage, false, moveFocusToReadPane, shouldMarkAsRead);
   }
 
   function arrayBufferToBase64(arrayBuffer) {

@@ -903,6 +903,38 @@ body.auth-locked {
   font-size: 0.95rem;
 }
 
+.mail-inbox-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mail-inbox-button:not(.is-unread) .mail-inbox-subject {
+  font-weight: 500;
+  color: #333;
+}
+
+.mail-read-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.mail-read-badge.is-unread {
+  color: #8b0000;
+  background: #ffe7e7;
+}
+
+.mail-read-badge.is-read {
+  color: #2f4f2f;
+  background: #ebf7eb;
+}
+
 .mail-inbox-meta {
   margin: 0;
   color: #444;
