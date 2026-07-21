@@ -98,6 +98,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const excelRowHeightInput = document.getElementById("excel-row-height");
   const excelApplyColWidthButton = document.getElementById("excel-apply-col-width");
   const excelApplyRowHeightButton = document.getElementById("excel-apply-row-height");
+  const excelAutoFitColButton = document.getElementById("excel-autofit-col");
+  const excelAutoFitAllButton = document.getElementById("excel-autofit-all");
 
   const sharepointHost = "blindesamfund.sharepoint.com";
   const sharepointSitePath = "/sites/Faelles";
@@ -139,6 +141,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let excelCellFormats = {};
   let excelColWidths = {};
   let excelRowHeights = {};
+  let excelMeasureCanvas = null;
 
   const excelDefaultFontFamily = "Calibri";
   const excelDefaultFontSize = "12px";
@@ -866,11 +869,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function getExcelColumnWidth(col) {
-    return clampNumber(excelColWidths[col], 60, 360, excelDefaultColWidth);
+    return clampNumber(excelColWidths[col], 60, 720, excelDefaultColWidth);
   }
 
   function setExcelColumnWidth(col, width) {
-    excelColWidths[col] = clampNumber(width, 60, 360, excelDefaultColWidth);
+    excelColWidths[col] = clampNumber(width, 60, 720, excelDefaultColWidth);
   }
 
   function getExcelRowHeight(row) {
@@ -879,6 +882,68 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function setExcelRowHeight(row, height) {
     excelRowHeights[row] = clampNumber(height, 28, 120, excelDefaultRowHeight);
+  }
+
+  function getExcelMeasureContext() {
+    if (!excelMeasureCanvas) {
+      excelMeasureCanvas = document.createElement("canvas");
+    }
+
+    return excelMeasureCanvas.getContext("2d");
+  }
+
+  function measureExcelTextWidth(text, row, col) {
+    const context = getExcelMeasureContext();
+    if (!context) {
+      return 60;
+    }
+
+    const format = getExcelCellFormat(row, col);
+    const fontSizePx = clampNumber(String(format.fontSize).replace(/[^0-9]/g, ""), 8, 72, 12);
+    context.font = `${format.isBold ? "700" : "400"} ${fontSizePx}px ${format.fontFamily}, sans-serif`;
+
+    const lines = String(text || "").split(/\r?\n/);
+    let maxLineWidth = 0;
+    lines.forEach((line) => {
+      const measured = context.measureText(line || "").width;
+      maxLineWidth = Math.max(maxLineWidth, measured);
+    });
+
+    return Math.ceil(maxLineWidth);
+  }
+
+  function calculateAutoFitColumnWidth(col) {
+    let maxWidth = 0;
+
+    for (let row = 0; row < excelRows; row += 1) {
+      const raw = getExcelRaw(row, col);
+      const display = raw.startsWith("=") ? getExcelDisplay(row, col) : raw;
+      const text = String(display || raw || "");
+      maxWidth = Math.max(maxWidth, measureExcelTextWidth(text, row, col));
+    }
+
+    // Extra spacing keeps content readable and avoids clipping at the right edge.
+    return clampNumber(Math.ceil(maxWidth + 28), 60, 720, excelDefaultColWidth);
+  }
+
+  function autoFitColumn(col) {
+    const width = calculateAutoFitColumnWidth(col);
+    setExcelColumnWidth(col, width);
+    return width;
+  }
+
+  function ensureColumnFitsCellContent(row, col) {
+    const raw = getExcelRaw(row, col);
+    const display = raw.startsWith("=") ? getExcelDisplay(row, col) : raw;
+    const required = clampNumber(Math.ceil(measureExcelTextWidth(display || raw, row, col) + 28), 60, 720, excelDefaultColWidth);
+    const current = getExcelColumnWidth(col);
+
+    if (required <= current) {
+      return false;
+    }
+
+    setExcelColumnWidth(col, required);
+    return true;
   }
 
   function applyExcelCellVisualStyle(input, row, col) {
@@ -3217,8 +3282,15 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
+      const row = Number.parseInt(input.getAttribute("data-row") || "0", 10);
+      const col = Number.parseInt(input.getAttribute("data-col") || "0", 10);
       updateExcelCellFromInput(input);
-      refreshExcelGridDisplay();
+
+      if (ensureColumnFitsCellContent(row, col)) {
+        renderExcelGrid();
+      } else {
+        refreshExcelGridDisplay();
+      }
     }, true);
 
     excelGrid.addEventListener("keydown", (event) => {
@@ -3335,10 +3407,25 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const width = clampNumber(excelColWidthInput.value, 60, 360, excelDefaultColWidth);
+    const width = clampNumber(excelColWidthInput.value, 60, 720, excelDefaultColWidth);
     setExcelColumnWidth(excelActiveCol, width);
     renderExcelGrid();
     setExcelStatus(`Kolonnebredde sat til ${width}px for kolonne ${colToLabel(excelActiveCol)}.`);
+  }
+
+  function applyAutoFitActiveColumn() {
+    const width = autoFitColumn(excelActiveCol);
+    renderExcelGrid();
+    setExcelStatus(`Kolonne ${colToLabel(excelActiveCol)} auto-tilpasset til ${width}px.`);
+  }
+
+  function applyAutoFitAllColumns() {
+    for (let col = 0; col < excelCols; col += 1) {
+      autoFitColumn(col);
+    }
+
+    renderExcelGrid();
+    setExcelStatus("Alle kolonner er auto-tilpasset til indhold.");
   }
 
   function applyActiveRowHeight() {
@@ -3355,6 +3442,18 @@ document.addEventListener("DOMContentLoaded", () => {
   if (excelApplyColWidthButton) {
     excelApplyColWidthButton.addEventListener("click", () => {
       applyActiveColumnWidth();
+    });
+  }
+
+  if (excelAutoFitColButton) {
+    excelAutoFitColButton.addEventListener("click", () => {
+      applyAutoFitActiveColumn();
+    });
+  }
+
+  if (excelAutoFitAllButton) {
+    excelAutoFitAllButton.addEventListener("click", () => {
+      applyAutoFitAllColumns();
     });
   }
 
