@@ -374,6 +374,51 @@
         </div>
         <p class="excel-help">Brug formellinjen med fx =SUM(A1:A5), =AVERAGE(B1:B3) eller simple regneudtryk.</p>
         <p class="excel-status" id="excel-status">Regneark klar.</p>
+        <div class="excel-toolbar" role="toolbar" aria-label="Excel formatering">
+          <label class="visually-hidden" for="excel-font-family">Skrifttype</label>
+          <select id="excel-font-family" class="word-select" aria-label="Skrifttype i celle">
+            <option value="Calibri" selected>Calibri</option>
+            <option value="Arial">Arial</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Tahoma">Tahoma</option>
+            <option value="Times New Roman">Times New Roman</option>
+            <option value="Verdana">Verdana</option>
+          </select>
+
+          <label class="visually-hidden" for="excel-font-size">Skriftstørrelse</label>
+          <select id="excel-font-size" class="word-select" aria-label="Skriftstørrelse i celle">
+            <option value="10px">10</option>
+            <option value="11px">11</option>
+            <option value="12px" selected>12</option>
+            <option value="14px">14</option>
+            <option value="16px">16</option>
+            <option value="18px">18</option>
+            <option value="20px">20</option>
+            <option value="24px">24</option>
+          </select>
+
+          <button type="button" class="secondary-button" id="excel-bold" aria-pressed="false">Fed</button>
+
+          <label class="visually-hidden" for="excel-text-color">Tekstfarve</label>
+          <input id="excel-text-color" class="word-color" type="color" value="#1f1f1f" aria-label="Tekstfarve i celle">
+
+          <label class="visually-hidden" for="excel-fill-color">Baggrundsfarve</label>
+          <input id="excel-fill-color" class="word-color" type="color" value="#ffffff" aria-label="Baggrundsfarve i celle">
+
+          <label class="visually-hidden" for="excel-border-style">Kant</label>
+          <select id="excel-border-style" class="word-select" aria-label="Kant i celle">
+            <option value="none" selected>Ingen kant</option>
+            <option value="all">Kant rundt</option>
+          </select>
+
+          <label class="visually-hidden" for="excel-col-width">Kolonnebredde</label>
+          <input id="excel-col-width" class="excel-size-input" type="number" min="60" max="360" step="1" value="110" aria-label="Kolonnebredde i pixel">
+          <button type="button" class="secondary-button" id="excel-apply-col-width">Sæt kolonne</button>
+
+          <label class="visually-hidden" for="excel-row-height">Rækkehøjde</label>
+          <input id="excel-row-height" class="excel-size-input" type="number" min="28" max="120" step="1" value="36" aria-label="Rækkehøjde i pixel">
+          <button type="button" class="secondary-button" id="excel-apply-row-height">Sæt række</button>
+        </div>
         <div class="excel-formula-row">
           <label for="excel-formula" class="excel-formula-label">Formel</label>
           <p class="excel-active-cell" id="excel-active-cell">Aktiv celle: A1</p>
@@ -388,6 +433,7 @@
 
   <script src="vendor/msal-browser.min.js"></script>
   <script src="vendor/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
   <script src="script.js"></script>
 </body>

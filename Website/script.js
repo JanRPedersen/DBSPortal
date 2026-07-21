@@ -88,6 +88,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const excelSaveOneDriveButton = document.getElementById("excel-save-onedrive");
   const excelSaveSharePointButton = document.getElementById("excel-save-sharepoint");
   const excelClearButton = document.getElementById("excel-clear");
+  const excelFontFamilySelect = document.getElementById("excel-font-family");
+  const excelFontSizeSelect = document.getElementById("excel-font-size");
+  const excelBoldButton = document.getElementById("excel-bold");
+  const excelTextColorInput = document.getElementById("excel-text-color");
+  const excelFillColorInput = document.getElementById("excel-fill-color");
+  const excelBorderStyleSelect = document.getElementById("excel-border-style");
+  const excelColWidthInput = document.getElementById("excel-col-width");
+  const excelRowHeightInput = document.getElementById("excel-row-height");
+  const excelApplyColWidthButton = document.getElementById("excel-apply-col-width");
+  const excelApplyRowHeightButton = document.getElementById("excel-apply-row-height");
 
   const sharepointHost = "blindesamfund.sharepoint.com";
   const sharepointSitePath = "/sites/Faelles";
@@ -126,6 +136,17 @@ document.addEventListener("DOMContentLoaded", () => {
   let excelData = [];
   let excelActiveRow = 0;
   let excelActiveCol = 0;
+  let excelCellFormats = {};
+  let excelColWidths = {};
+  let excelRowHeights = {};
+
+  const excelDefaultFontFamily = "Calibri";
+  const excelDefaultFontSize = "12px";
+  const excelDefaultTextColor = "#1f1f1f";
+  const excelDefaultFillColor = "#ffffff";
+  const excelDefaultBorderStyle = "none";
+  const excelDefaultColWidth = 110;
+  const excelDefaultRowHeight = 36;
 
   function hasXlsxRuntime() {
     return typeof window !== "undefined" && !!window.XLSX;
@@ -785,6 +806,127 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  function clampNumber(value, min, max, fallback) {
+    const parsed = Number.parseInt(String(value), 10);
+    if (!Number.isFinite(parsed)) {
+      return fallback;
+    }
+    return Math.max(min, Math.min(max, parsed));
+  }
+
+  function normalizeHexColor(value, fallback) {
+    const normalized = String(value || "").trim().toLowerCase();
+    return /^#[0-9a-f]{6}$/i.test(normalized) ? normalized : fallback;
+  }
+
+  function getExcelCellFormatKey(row, col) {
+    return `${row}:${col}`;
+  }
+
+  function getExcelCellFormat(row, col) {
+    const stored = excelCellFormats[getExcelCellFormatKey(row, col)] || {};
+    return {
+      fontFamily: stored.fontFamily || excelDefaultFontFamily,
+      fontSize: stored.fontSize || excelDefaultFontSize,
+      isBold: Boolean(stored.isBold),
+      textColor: normalizeHexColor(stored.textColor, excelDefaultTextColor),
+      fillColor: normalizeHexColor(stored.fillColor, excelDefaultFillColor),
+      borderStyle: stored.borderStyle === "all" ? "all" : excelDefaultBorderStyle,
+    };
+  }
+
+  function setExcelCellFormat(row, col, partialFormat) {
+    const key = getExcelCellFormatKey(row, col);
+    const previous = getExcelCellFormat(row, col);
+    const next = {
+      ...previous,
+      ...(partialFormat || {}),
+    };
+
+    next.fontFamily = String(next.fontFamily || excelDefaultFontFamily);
+    next.fontSize = String(next.fontSize || excelDefaultFontSize);
+    next.isBold = Boolean(next.isBold);
+    next.textColor = normalizeHexColor(next.textColor, excelDefaultTextColor);
+    next.fillColor = normalizeHexColor(next.fillColor, excelDefaultFillColor);
+    next.borderStyle = next.borderStyle === "all" ? "all" : "none";
+
+    const isDefault = next.fontFamily === excelDefaultFontFamily
+      && next.fontSize === excelDefaultFontSize
+      && !next.isBold
+      && next.textColor === excelDefaultTextColor
+      && next.fillColor === excelDefaultFillColor
+      && next.borderStyle === excelDefaultBorderStyle;
+
+    if (isDefault) {
+      delete excelCellFormats[key];
+      return;
+    }
+
+    excelCellFormats[key] = next;
+  }
+
+  function getExcelColumnWidth(col) {
+    return clampNumber(excelColWidths[col], 60, 360, excelDefaultColWidth);
+  }
+
+  function setExcelColumnWidth(col, width) {
+    excelColWidths[col] = clampNumber(width, 60, 360, excelDefaultColWidth);
+  }
+
+  function getExcelRowHeight(row) {
+    return clampNumber(excelRowHeights[row], 28, 120, excelDefaultRowHeight);
+  }
+
+  function setExcelRowHeight(row, height) {
+    excelRowHeights[row] = clampNumber(height, 28, 120, excelDefaultRowHeight);
+  }
+
+  function applyExcelCellVisualStyle(input, row, col) {
+    if (!input) {
+      return;
+    }
+
+    const format = getExcelCellFormat(row, col);
+    const rowHeight = getExcelRowHeight(row);
+
+    input.style.fontFamily = format.fontFamily;
+    input.style.fontSize = format.fontSize;
+    input.style.fontWeight = format.isBold ? "700" : "400";
+    input.style.color = format.textColor;
+    input.style.backgroundColor = format.fillColor;
+    input.style.height = `${Math.max(24, rowHeight - 2)}px`;
+    input.classList.toggle("has-border", format.borderStyle === "all");
+  }
+
+  function syncExcelFormattingControls() {
+    const activeFormat = getExcelCellFormat(excelActiveRow, excelActiveCol);
+
+    if (excelFontFamilySelect) {
+      excelFontFamilySelect.value = activeFormat.fontFamily;
+    }
+    if (excelFontSizeSelect) {
+      excelFontSizeSelect.value = activeFormat.fontSize;
+    }
+    if (excelBoldButton) {
+      excelBoldButton.setAttribute("aria-pressed", String(activeFormat.isBold));
+    }
+    if (excelTextColorInput) {
+      excelTextColorInput.value = activeFormat.textColor;
+    }
+    if (excelFillColorInput) {
+      excelFillColorInput.value = activeFormat.fillColor;
+    }
+    if (excelBorderStyleSelect) {
+      excelBorderStyleSelect.value = activeFormat.borderStyle;
+    }
+    if (excelColWidthInput) {
+      excelColWidthInput.value = String(getExcelColumnWidth(excelActiveCol));
+    }
+    if (excelRowHeightInput) {
+      excelRowHeightInput.value = String(getExcelRowHeight(excelActiveRow));
+    }
+  }
+
   function colToLabel(colIndex) {
     let value = colIndex + 1;
     let label = "";
@@ -976,6 +1118,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (excelFormulaInput) {
       excelFormulaInput.value = getExcelRaw(excelActiveRow, excelActiveCol);
     }
+
+    syncExcelFormattingControls();
   }
 
   function refreshExcelGridDisplay() {
@@ -987,6 +1131,7 @@ document.addEventListener("DOMContentLoaded", () => {
     inputs.forEach((input) => {
       const row = Number.parseInt(input.getAttribute("data-row") || "0", 10);
       const col = Number.parseInt(input.getAttribute("data-col") || "0", 10);
+      applyExcelCellVisualStyle(input, row, col);
       const isFocused = document.activeElement === input;
       if (!isFocused) {
         input.value = getExcelDisplay(row, col);
@@ -1008,8 +1153,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     for (let col = 0; col < excelCols; col += 1) {
       const th = document.createElement("th");
+      const colWidth = getExcelColumnWidth(col);
       th.scope = "col";
       th.textContent = colToLabel(col);
+      th.style.width = `${colWidth}px`;
+      th.style.minWidth = `${colWidth}px`;
       headerRow.appendChild(th);
     }
 
@@ -1019,6 +1167,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const tbody = document.createElement("tbody");
     for (let row = 0; row < excelRows; row += 1) {
       const tr = document.createElement("tr");
+      const rowHeight = getExcelRowHeight(row);
+      tr.style.height = `${rowHeight}px`;
       const rowHead = document.createElement("th");
       rowHead.scope = "row";
       rowHead.className = "excel-row-head";
@@ -1026,14 +1176,19 @@ document.addEventListener("DOMContentLoaded", () => {
       tr.appendChild(rowHead);
 
       for (let col = 0; col < excelCols; col += 1) {
+        const colWidth = getExcelColumnWidth(col);
         const td = document.createElement("td");
+        td.style.width = `${colWidth}px`;
+        td.style.minWidth = `${colWidth}px`;
         const input = document.createElement("input");
         input.type = "text";
         input.className = "excel-cell-input";
         input.setAttribute("data-row", String(row));
         input.setAttribute("data-col", String(col));
         input.setAttribute("aria-label", `Celle ${colToLabel(col)}${row + 1}`);
+        input.style.minWidth = `${Math.max(60, colWidth - 4)}px`;
         input.value = getExcelDisplay(row, col);
+        applyExcelCellVisualStyle(input, row, col);
         td.appendChild(input);
         tr.appendChild(td);
       }
@@ -1199,6 +1354,9 @@ document.addEventListener("DOMContentLoaded", () => {
     excelRows = Math.max(20, parsedRows.length);
     excelCols = Math.max(10, parsedRows.reduce((max, row) => Math.max(max, row.length), 0));
     excelData = createExcelData(excelRows, excelCols);
+    excelCellFormats = {};
+    excelColWidths = {};
+    excelRowHeights = {};
 
     parsedRows.forEach((row, rowIndex) => {
       row.forEach((value, colIndex) => {
@@ -1213,6 +1371,45 @@ document.addEventListener("DOMContentLoaded", () => {
     renderExcelGrid();
   }
 
+  function excelHexToArgb(hexColor, fallback = "#000000") {
+    const normalized = normalizeHexColor(hexColor, fallback).slice(1).toUpperCase();
+    return `FF${normalized}`;
+  }
+
+  function hasCustomExcelCellFormat(row, col) {
+    return Object.prototype.hasOwnProperty.call(excelCellFormats, getExcelCellFormatKey(row, col));
+  }
+
+  function buildExcelCellStyle(row, col) {
+    const format = getExcelCellFormat(row, col);
+    const fontSizePx = clampNumber(String(format.fontSize).replace(/[^0-9]/g, ""), 8, 72, 12);
+
+    const style = {
+      font: {
+        name: format.fontFamily,
+        sz: fontSizePx,
+        bold: format.isBold,
+        color: { rgb: excelHexToArgb(format.textColor, excelDefaultTextColor) },
+      },
+      fill: {
+        patternType: "solid",
+        fgColor: { rgb: excelHexToArgb(format.fillColor, excelDefaultFillColor) },
+        bgColor: { rgb: excelHexToArgb(format.fillColor, excelDefaultFillColor) },
+      },
+    };
+
+    if (format.borderStyle === "all") {
+      style.border = {
+        top: { style: "thin", color: { rgb: "FF8A8A8A" } },
+        right: { style: "thin", color: { rgb: "FF8A8A8A" } },
+        bottom: { style: "thin", color: { rgb: "FF8A8A8A" } },
+        left: { style: "thin", color: { rgb: "FF8A8A8A" } },
+      };
+    }
+
+    return style;
+  }
+
   function exportExcelWorkbookBinary() {
     if (!hasXlsxRuntime()) {
       throw new Error("XLSX bibliotek er ikke indlæst.");
@@ -1224,7 +1421,8 @@ document.addEventListener("DOMContentLoaded", () => {
     for (let row = 0; row < excelRows; row += 1) {
       for (let col = 0; col < excelCols; col += 1) {
         const raw = String(excelData[row]?.[col] ?? "");
-        if (!raw) {
+        const hasCustomFormat = hasCustomExcelCellFormat(row, col);
+        if (!raw && !hasCustomFormat) {
           continue;
         }
 
@@ -1241,9 +1439,26 @@ document.addEventListener("DOMContentLoaded", () => {
           cell.v = raw;
         }
 
+        if (!raw) {
+          cell.t = "s";
+          cell.v = "";
+        }
+
+        if (hasCustomFormat) {
+          cell.s = buildExcelCellStyle(row, col);
+        }
+
         worksheet[address] = cell;
       }
     }
+
+    worksheet["!cols"] = Array.from({ length: excelCols }, (_, col) => ({
+      wpx: getExcelColumnWidth(col),
+    }));
+
+    worksheet["!rows"] = Array.from({ length: excelRows }, (_, row) => ({
+      hpx: getExcelRowHeight(row),
+    }));
 
     worksheet["!ref"] = window.XLSX.utils.encode_range({
       s: { r: 0, c: 0 },
@@ -1257,7 +1472,11 @@ document.addEventListener("DOMContentLoaded", () => {
       },
     };
 
-    return window.XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    return window.XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+      cellStyles: true,
+    });
   }
 
   function splitRecipients(value) {
@@ -3049,6 +3268,120 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  if (excelFontFamilySelect) {
+    excelFontFamilySelect.addEventListener("change", () => {
+      setExcelCellFormat(excelActiveRow, excelActiveCol, {
+        fontFamily: excelFontFamilySelect.value || excelDefaultFontFamily,
+      });
+      refreshExcelGridDisplay();
+      setExcelStatus("Skrifttype opdateret for aktiv celle.");
+    });
+  }
+
+  if (excelFontSizeSelect) {
+    excelFontSizeSelect.addEventListener("change", () => {
+      setExcelCellFormat(excelActiveRow, excelActiveCol, {
+        fontSize: excelFontSizeSelect.value || excelDefaultFontSize,
+      });
+      refreshExcelGridDisplay();
+      setExcelStatus("Skriftstoerrelse opdateret for aktiv celle.");
+    });
+  }
+
+  if (excelBoldButton) {
+    excelBoldButton.addEventListener("click", () => {
+      const current = getExcelCellFormat(excelActiveRow, excelActiveCol);
+      setExcelCellFormat(excelActiveRow, excelActiveCol, {
+        isBold: !current.isBold,
+      });
+      refreshExcelGridDisplay();
+      syncExcelFormattingControls();
+      setExcelStatus("Fed skrift er opdateret for aktiv celle.");
+    });
+  }
+
+  if (excelTextColorInput) {
+    excelTextColorInput.addEventListener("input", () => {
+      setExcelCellFormat(excelActiveRow, excelActiveCol, {
+        textColor: excelTextColorInput.value || excelDefaultTextColor,
+      });
+      refreshExcelGridDisplay();
+      setExcelStatus("Tekstfarve opdateret for aktiv celle.");
+    });
+  }
+
+  if (excelFillColorInput) {
+    excelFillColorInput.addEventListener("input", () => {
+      setExcelCellFormat(excelActiveRow, excelActiveCol, {
+        fillColor: excelFillColorInput.value || excelDefaultFillColor,
+      });
+      refreshExcelGridDisplay();
+      setExcelStatus("Baggrundsfarve opdateret for aktiv celle.");
+    });
+  }
+
+  if (excelBorderStyleSelect) {
+    excelBorderStyleSelect.addEventListener("change", () => {
+      setExcelCellFormat(excelActiveRow, excelActiveCol, {
+        borderStyle: excelBorderStyleSelect.value === "all" ? "all" : "none",
+      });
+      refreshExcelGridDisplay();
+      setExcelStatus("Kant opdateret for aktiv celle.");
+    });
+  }
+
+  function applyActiveColumnWidth() {
+    if (!excelColWidthInput) {
+      return;
+    }
+
+    const width = clampNumber(excelColWidthInput.value, 60, 360, excelDefaultColWidth);
+    setExcelColumnWidth(excelActiveCol, width);
+    renderExcelGrid();
+    setExcelStatus(`Kolonnebredde sat til ${width}px for kolonne ${colToLabel(excelActiveCol)}.`);
+  }
+
+  function applyActiveRowHeight() {
+    if (!excelRowHeightInput) {
+      return;
+    }
+
+    const height = clampNumber(excelRowHeightInput.value, 28, 120, excelDefaultRowHeight);
+    setExcelRowHeight(excelActiveRow, height);
+    renderExcelGrid();
+    setExcelStatus(`Raekkehoejde sat til ${height}px for raekke ${excelActiveRow + 1}.`);
+  }
+
+  if (excelApplyColWidthButton) {
+    excelApplyColWidthButton.addEventListener("click", () => {
+      applyActiveColumnWidth();
+    });
+  }
+
+  if (excelApplyRowHeightButton) {
+    excelApplyRowHeightButton.addEventListener("click", () => {
+      applyActiveRowHeight();
+    });
+  }
+
+  if (excelColWidthInput) {
+    excelColWidthInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        applyActiveColumnWidth();
+      }
+    });
+  }
+
+  if (excelRowHeightInput) {
+    excelRowHeightInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        applyActiveRowHeight();
+      }
+    });
+  }
+
   if (excelAddRowButton) {
     excelAddRowButton.addEventListener("click", () => {
       excelRows += 1;
@@ -3076,6 +3409,19 @@ document.addEventListener("DOMContentLoaded", () => {
   if (excelSaveSharePointButton) {
     excelSaveSharePointButton.addEventListener("click", async () => {
       await saveExcelToCloud("sharepoint");
+    });
+  }
+
+  if (excelClearButton) {
+    excelClearButton.addEventListener("click", () => {
+      excelData = createExcelData(excelRows, excelCols);
+      excelCellFormats = {};
+      excelColWidths = {};
+      excelRowHeights = {};
+      excelActiveRow = 0;
+      excelActiveCol = 0;
+      renderExcelGrid();
+      setExcelStatus("Arket er ryddet.");
     });
   }
 
