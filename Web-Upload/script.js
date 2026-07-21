@@ -131,6 +131,67 @@ document.addEventListener("DOMContentLoaded", () => {
     return typeof window !== "undefined" && !!window.XLSX;
   }
 
+  function hasMammothRuntime() {
+    return typeof window !== "undefined" && !!window.mammoth && typeof window.mammoth.convertToHtml === "function";
+  }
+
+  function isDocxFile(file) {
+    const lowerName = String(file?.name || "").toLowerCase();
+    const mime = String(file?.type || "").toLowerCase();
+    return lowerName.endsWith(".docx") || mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  }
+
+  async function decodeTextFile(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const uint8 = new Uint8Array(arrayBuffer);
+
+    try {
+      return new TextDecoder("utf-8", { fatal: false }).decode(uint8).replace(/^\uFEFF/, "");
+    } catch {
+      // Fallback improves compatibility with Office exports saved in legacy encodings.
+      return new TextDecoder("windows-1252", { fatal: false }).decode(uint8).replace(/^\uFEFF/, "");
+    }
+  }
+
+  async function parseWordDocumentFile(file) {
+    const lowerName = String(file?.name || "").toLowerCase();
+    const mime = String(file?.type || "").toLowerCase();
+    const isHtml = lowerName.endsWith(".html") || lowerName.endsWith(".htm") || mime.includes("html");
+
+    if (isDocxFile(file)) {
+      if (!hasMammothRuntime()) {
+        throw new Error("DOCX bibliotek mangler. Prøv at genindlæse siden.");
+      }
+
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await window.mammoth.convertToHtml({ arrayBuffer });
+      const html = String(result?.value || "").trim();
+      if (!html) {
+        throw new Error("DOCX-filen indeholdt ingen læsbar tekst.");
+      }
+
+      return {
+        mode: "html",
+        content: html,
+        status: "Word-dokument (.docx) åbnet.",
+      };
+    }
+
+    if (isHtml) {
+      return {
+        mode: "html",
+        content: await decodeTextFile(file),
+        status: "HTML-dokument åbnet.",
+      };
+    }
+
+    return {
+      mode: "text",
+      content: await decodeTextFile(file),
+      status: "Tekstdokument åbnet.",
+    };
+  }
+
   const formDefinitions = {
     hire: {
       title: "Ansættelse i portal",
@@ -670,12 +731,15 @@ document.addEventListener("DOMContentLoaded", () => {
       bold: "Fed",
       italic: "Kursiv",
       underline: "Understreg",
+      superscript: "Hævet",
+      subscript: "Sænket",
       strikeThrough: "Gennemstreget",
       insertUnorderedList: "Punktliste",
       insertOrderedList: "Nummereret liste",
       justifyLeft: "Venstre",
       justifyCenter: "Centrer",
       justifyRight: "Højre",
+      justifyFull: "Juster",
       unlink: "Fjern link",
       undo: "Fortryd",
       redo: "Gendan",
@@ -683,6 +747,21 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     setWordStatus(`Værktøj anvendt: ${commandLabels[command] || command}.`);
+  }
+
+  function applyWordFontSize(fontSize) {
+    if (!wordEditor) {
+      return;
+    }
+
+    const normalizedSize = String(fontSize || "12pt").trim();
+    runWordCommand("fontSize", "7");
+
+    const fontElements = wordEditor.querySelectorAll('font[size="7"]');
+    fontElements.forEach((fontElement) => {
+      fontElement.removeAttribute("size");
+      fontElement.style.fontSize = normalizedSize;
+    });
   }
 
   function setExcelStatus(message) {
@@ -1005,7 +1084,28 @@ document.addEventListener("DOMContentLoaded", () => {
     return csv;
   }
 
-  function parseCsv(text) {
+  function detectDelimitedTextDelimiter(text) {
+    const sampleLines = String(text || "")
+      .split(/\r?\n/)
+      .slice(0, 5)
+      .filter((line) => line.trim().length > 0);
+
+    const delimiters = [",", ";", "\t"];
+    let bestDelimiter = ",";
+    let bestScore = -1;
+
+    delimiters.forEach((delimiter) => {
+      const score = sampleLines.reduce((total, line) => total + (line.split(delimiter).length - 1), 0);
+      if (score > bestScore) {
+        bestScore = score;
+        bestDelimiter = delimiter;
+      }
+    });
+
+    return bestDelimiter;
+  }
+
+  function parseCsv(text, delimiter = ",") {
     const rows = [];
     let current = "";
     let row = [];
@@ -1022,7 +1122,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
           inQuotes = !inQuotes;
         }
-      } else if (char === "," && !inQuotes) {
+      } else if (char === delimiter && !inQuotes) {
         row.push(current);
         current = "";
       } else if ((char === "\n" || char === "\r") && !inQuotes) {
@@ -2764,8 +2864,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (wordFontSizeSelect) {
     wordFontSizeSelect.addEventListener("change", () => {
-      const selected = wordFontSizeSelect.value || "3";
-      runWordCommand("fontSize", selected);
+      const selected = wordFontSizeSelect.value || "12pt";
+      applyWordFontSize(selected);
       setWordStatus("Skriftstørrelse opdateret.");
       if (wordEditor) {
         wordEditor.focus();
@@ -2853,21 +2953,18 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       try {
-        const text = await file.text();
-        const fileName = (file.name || "").toLowerCase();
-        const isHtml = fileName.endsWith(".html") || fileName.endsWith(".htm") || (file.type || "").includes("html");
-
-        if (isHtml) {
-          wordEditor.innerHTML = text;
-          setWordStatus("HTML-dokument åbnet.");
+        const parsedDocument = await parseWordDocumentFile(file);
+        if (parsedDocument.mode === "html") {
+          wordEditor.innerHTML = parsedDocument.content;
         } else {
-          wordEditor.textContent = text;
-          setWordStatus("Tekstdokument åbnet.");
+          wordEditor.textContent = parsedDocument.content;
         }
 
+        setWordStatus(parsedDocument.status);
         wordEditor.focus();
-      } catch {
-        setWordStatus("Kunne ikke åbne filen.");
+      } catch (error) {
+        const message = error?.message || "Ukendt fejl";
+        setWordStatus(`Kunne ikke åbne filen: ${message}`);
       } finally {
         wordOpenFileInput.value = "";
       }
@@ -2999,23 +3096,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
       try {
         const lowerName = String(file.name || "").toLowerCase();
-        const isCsv = lowerName.endsWith(".csv") || file.type === "text/csv";
+        const mime = String(file.type || "").toLowerCase();
+        const isDelimitedText = lowerName.endsWith(".csv")
+          || lowerName.endsWith(".tsv")
+          || mime === "text/csv"
+          || mime === "text/tab-separated-values";
 
-        if (isCsv) {
-          const text = await file.text();
-          const parsedRows = parseCsv(text);
+        if (isDelimitedText) {
+          const text = await decodeTextFile(file);
+          const delimiter = lowerName.endsWith(".tsv") ? "\t" : detectDelimitedTextDelimiter(text);
+          const parsedRows = parseCsv(text, delimiter);
           applyExcelRows(parsedRows);
-          setExcelStatus("CSV åbnet i regnearket.");
+          setExcelStatus("CSV/TSV åbnet i regnearket.");
         } else {
           if (!hasXlsxRuntime()) {
             throw new Error("XLSX bibliotek mangler i portalen.");
           }
 
           const arrayBuffer = await file.arrayBuffer();
-          const workbook = window.XLSX.read(arrayBuffer, { type: "array", cellFormula: true });
-          const parsedRows = getExcelRowsFromWorksheet(workbook);
+          const workbook = window.XLSX.read(arrayBuffer, {
+            type: "array",
+            cellFormula: true,
+            cellDates: true,
+            cellNF: true,
+            raw: false,
+            sheetStubs: true,
+          });
+          const sheetName = workbook.SheetNames.find((name) => workbook.Sheets?.[name]?.["!ref"]) || workbook.SheetNames[0];
+          const parsedRows = getExcelRowsFromWorksheet(workbook, sheetName);
           applyExcelRows(parsedRows);
-          setExcelStatus("Excel-fil åbnet i regnearket.");
+          setExcelStatus(`Excel-fil åbnet i regnearket (${sheetName || "Ark1"}).`);
         }
       } catch (error) {
         const message = error?.message || "Ukendt fejl";
